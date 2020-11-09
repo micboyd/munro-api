@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 
 // Import routes
 const authRoute = require('./routes/auth');
-const postRoute = require('./routes/posts');
+const munrosRoute = require('./routes/munros');
 
 dotenv.config();
 
@@ -23,7 +23,7 @@ app.use(express.json());
 
 // Route Middlewears
 app.use('/api/user', authRoute);
-app.use('/api/posts', postRoute);
+app.use('/api/munros', munrosRoute);
 
 app.listen(process.env.PORT || 3000, () => {
     console.log('Server running');

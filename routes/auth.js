@@ -6,8 +6,6 @@ const { registerValidation, loginValidation } = require('../validation');
 
 router.post('/register', async (req, res) => {
 
-    console.log(req.body);
-
     // Validate the user
     const {error} = registerValidation(req.body);
 
