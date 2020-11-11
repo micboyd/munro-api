@@ -45,6 +45,7 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
 
+    // Validate the login
     const {error} = loginValidation(req.body);
 
     if (error) {
@@ -66,14 +67,19 @@ router.post('/login', async (req, res) => {
     if (!validPass) {
         res.status(400).send('Email or password is incorrect' );
     }
- 
-    // Create & assign a taken
 
+    // Create & assign a token
     const token = jwt.sign({_id: user._id}, process.env.TOKEN_SECRET);
     res.header('auth-token', token);
 
+    // Return user information
+
+
     // Succesful Login
-    res.status(200).send({message: 'success'});
+    res.status(200).send(user);
+
+
+
 });
 
 module.exports = router;
