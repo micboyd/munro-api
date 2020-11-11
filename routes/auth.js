@@ -73,7 +73,7 @@ router.post('/login', async (req, res) => {
     res.header('auth-token', token);
 
     // Succesful Login
-    res.send('success');
+    res.status(400).send({message: 'success'});
 });
 
 module.exports = router;
