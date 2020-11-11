@@ -65,7 +65,7 @@ router.post('/login', async (req, res) => {
     const validPass = await bcrypt.compare(req.body.password, user.password);
 
     if (!validPass) {
-        res.status(400).send('Email or password is incorrect' );
+        res.status(400).send('Email or password is incorrect');
     }
 
     // Create & assign a token
@@ -73,7 +73,7 @@ router.post('/login', async (req, res) => {
     res.header('auth-token', token);
 
     // Succesful Login
-    res.status(200).send(user.name);
+    res.status(200).send(name);
 });
 
 module.exports = router;
