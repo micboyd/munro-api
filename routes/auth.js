@@ -3,6 +3,7 @@ const User = require('../model/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { registerValidation, loginValidation } = require('../validation');
+const ObjectId = require('mongodb').ObjectId; 
 
 router.post('/register', async (req, res) => {
 
@@ -76,11 +77,8 @@ router.post('/login', async (req, res) => {
 });
 
 router.get('/details/:userId', async (req, res) => {
-    const details = User.findOne({
-        id: req.params.userId
-    });
-
-    res.json(details);
+    let details = await User.findOne({_id: new ObjectId(req.params.userId)})
+    res.send(details);
 });
 
 module.exports = router;
