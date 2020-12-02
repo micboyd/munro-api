@@ -77,10 +77,10 @@ router.post('/login', async (req, res) => {
 
 router.get('/details/:userId', async (req, res) => {
     const details = User.findOne({
-        _id: req.params.userId
+        id: req.params.userId
     });
 
-    res.send(details);
+    res.json(details);
 });
 
 module.exports = router;
