@@ -45,7 +45,6 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
 
-    // Validate the login
     const {error} = loginValidation(req.body);
 
     if (error) {
@@ -74,6 +73,13 @@ router.post('/login', async (req, res) => {
 
     // Succesful Login
     res.send('Logged in');
+});
+
+router.post('/details/:userId', async (req, res) => {
+    const details = User.findOne({
+        _id: req.params.userId
+    });
+    res.send(details);
 });
 
 module.exports = router;
