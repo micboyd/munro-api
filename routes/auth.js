@@ -81,9 +81,4 @@ router.get('/details/:userId', async (req, res) => {
     res.send(details);
 });
 
-router.get('/munros/:userId', async (req, res) => {
-    let details = await User.findOne({_id: new ObjectId(req.params.userId), munros: 1})
-    res.send(details);
-});
-
 module.exports = router;
