@@ -10,8 +10,6 @@ router.get('/incomplete/:userId', async (req, res) => {
 
     const incomplete = await Munro.find(({"_id" : {"$nin" : userObject.munros}}));
 
-    console.log(incomplete.length);
-
     return res.json(incomplete);
 })
 
@@ -20,8 +18,6 @@ router.get('/complete/:userId', async (req, res) => {
     let userObject = user.toObject();
 
     const complete = await Munro.find(({"_id" : {"$in" : userObject.munros}}));
-
-    console.log(complete.length);
 
     return res.json(complete);
 });
