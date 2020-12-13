@@ -35,7 +35,7 @@ router.put('/mark-incomplete/:userId', async (req, res) => {
         {_id: new ObjectId(req.params.userId)}, 
         {$pull: {munros: req.body.munros[0]}}
     );
-    return res.json(newMunro);
+    return res.json(removeMunro);
 });
 
 module.exports = router;
