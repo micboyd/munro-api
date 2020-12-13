@@ -22,4 +22,13 @@ router.get('/complete/:userId', async (req, res) => {
     return res.json(complete);
 });
 
+router.put('/mark-complete/:userId', async (req, res) => {
+    const newMunro = await User.updateOne(
+        {_id: new ObjectId(req.params.userId)}, 
+        {$addToSet: {munros: req.body.munros[0]}}
+    );
+    return res.json(newMunro);
+});
+
 module.exports = router;
+ 
