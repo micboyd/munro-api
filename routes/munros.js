@@ -32,7 +32,7 @@ router.put('/mark-complete/:userId', async (req, res) => {
 
 router.put('/mark-incomplete/:userId', async (req, res) => {
     const removeMunro = await User.updateOne(
-        {_id: new ObjectId(req.params.userId)}, 
+        {_id: new ObjectId(req.params.userId)},
         {$pull: {munros: req.body.munros[0]}}
     );
     return res.json(removeMunro);
