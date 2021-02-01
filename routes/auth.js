@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const { registerValidation, loginValidation } = require('../validation');
 const ObjectId = require('mongodb').ObjectId; 
 
+/* End-point: Register */
 router.post('/register', async (req, res) => {
 
     // Validate the user
@@ -44,6 +45,7 @@ router.post('/register', async (req, res) => {
     }
 });
 
+/* End-point: Login */
 router.post('/login', async (req, res) => {
 
     const {error} = loginValidation(req.body);

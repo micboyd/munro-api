@@ -1,41 +1,22 @@
 const router = require('express').Router();
+
 const Munro = require('../model/Munro');
 const User = require('../model/User');
-const ObjectId = require('mongodb').ObjectID;
 
+/* Routes */
 
-router.get('/incomplete/:userId', async (req, res) => {
-    let user = await User.findOne({_id: new ObjectId(req.params.userId)}, {munros: 1});
-    let userObject = user.toObject();
-
-    const incomplete = await Munro.find(({"_id" : {"$nin" : userObject.munros}}));
-
-    return res.json(incomplete);
+router.get('/all', async (res) => {
+    const munros = await Munro.find();
+    return res.json(munros);
 })
 
 router.get('/complete/:userId', async (req, res) => {
-    let user = await User.findOne({_id: new ObjectId(req.params.userId)}, {munros: 1});
+    let user = await User.findOne({_id: req.params.userId}, {munros: 1});
     let userObject = user.toObject();
 
     const complete = await Munro.find(({"_id" : {"$in" : userObject.munros}}));
 
     return res.json(complete);
-});
-
-router.put('/mark-complete/:userId', async (req, res) => {
-    const newMunro = await User.updateOne(
-        {_id: new ObjectId(req.params.userId)}, 
-        {$addToSet: {munros: req.body.munros[0]}}
-    );
-    return res.json(newMunro);
-});
-
-router.put('/mark-incomplete/:userId', async (req, res) => {
-    const removeMunro = await User.updateOne(
-        {_id: new ObjectId(req.params.userId)},
-        {$pull: {munros: req.body.munros[0]}}
-    );
-    return res.json(removeMunro);
 });
 
 module.exports = router;
