@@ -18,8 +18,6 @@ mongoose.connect(process.env.DB_CONNECT,
         console.log('Connected to DB');
 });
 
-app.options('*', cors());
-
 // Json Parser
 app.use(express.json());
 
