@@ -4,7 +4,7 @@ const Munro = require('../model/Munro');
 const User = require('../model/User');
 
 // Returns all munros
-router.get('/all', async (res) => {
+router.get('/all', async (req, res) => {
     const munros = await Munro.find();
     return res.json(munros);
 })
