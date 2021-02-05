@@ -3,7 +3,6 @@ const User = require('../model/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { registerValidation, loginValidation } = require('../validation');
-const ObjectId = require('mongodb').ObjectId; 
 
 /* End-point: Register */
 router.post('/register', async (req, res) => {
@@ -72,15 +71,10 @@ router.post('/login', async (req, res) => {
 
     // Create & assign a token
     const token = jwt.sign({_id: user._id}, process.env.TOKEN_SECRET);
-    res.status(200).header('auth-token', token).json({token : token, user : user._id});
-
-    // Succesful Login
-    res.send('Logged in');
-});
-
-router.get('/details/:userId', async (req, res) => {
-    let details = await User.findOne({_id: new ObjectId(req.params.userId)})
-    res.send(details);
+    res.status(200).header('auth-token', token).json({
+        token : token, 
+        username: user.name
+    });
 });
 
 module.exports = router;
