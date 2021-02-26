@@ -29,7 +29,9 @@ router.post('/register', async (req, res) => {
 
     // Create a new user
     const user = new User({
-        name: req.body.name,
+        firstname: req.body.firstname,
+        surname: req.body.surname,
+        isAdmin: req.body.isAdmin,
         email: req.body.email,
         password: hashPassword
     });
@@ -76,6 +78,11 @@ router.post('/login', async (req, res) => {
         userid: user._id,
         username: user.name
     });
+});
+
+router.get('/details/:userId', async (req, res) => {
+    let user = await User.findOne({_id: req.params.userId});
+    return res.json(user);
 });
 
 module.exports = router;
