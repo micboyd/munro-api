@@ -1,5 +1,4 @@
 const router = require('express').Router();
-
 const Munro = require('../model/Munro');
 const User = require('../model/User');
 
@@ -28,8 +27,8 @@ router.get('/incomplete/:userId', async (req, res) => {
 // Mark a munro as complete - Param: User ID
 router.put('/mark-complete/:userId', async (req, res) => {
     const newMunro = await User.updateOne(
-        {_id: new ObjectId(req.params.userId)}, 
-        {$addToSet: {munros: req.body.munros[0]}}
+        {_id: req.params.userId}, 
+        {$addToSet: {munros: req.body.munros}}
     );
     return res.json(newMunro);
 });
@@ -37,8 +36,8 @@ router.put('/mark-complete/:userId', async (req, res) => {
 // Mark a munro as incomplete - Param: User ID
 router.put('/mark-incomplete/:userId', async (req, res) => {
     const removeMunro = await User.updateOne(
-        {_id: new ObjectId(req.params.userId)},
-        {$pull: {munros: req.body.munros[0]}}
+        {_id: req.params.userId},
+        {$pull: {munros: req.body.munros}}
     );
     return res.json(removeMunro);
 });
