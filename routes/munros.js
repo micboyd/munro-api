@@ -26,9 +26,10 @@ router.get('/incomplete/:userId', async (req, res) => {
 
 // Mark a munro as complete - Param: User ID
 router.put('/mark-complete/:userId', async (req, res) => {
+    console.log(req.body);
     const newMunro = await User.updateOne(
         {_id: req.params.userId}, 
-        {$addToSet: {munros: req.body.munros}}
+        {$addToSet: {munros: req.body}}
     );
     return res.json(newMunro);
 });
