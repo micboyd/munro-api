@@ -29,7 +29,7 @@ router.put('/mark-complete/:userId', async (req, res) => {
     console.log(req.body);
     const newMunro = await User.updateOne(
         {_id: req.params.userId}, 
-        {$addToSet: {munros: req.body.munros[0]}}
+        {$addToSet: {munros: req.body}}
     );
     return res.json(newMunro);
 });
@@ -38,7 +38,7 @@ router.put('/mark-complete/:userId', async (req, res) => {
 router.put('/mark-incomplete/:userId', async (req, res) => {
     const removeMunro = await User.updateOne(
         {_id: req.params.userId},
-        {$pull: {munros: req.body.munros}}
+        {$pull: {munros: req.body}}
     );
     return res.json(removeMunro);
 });
