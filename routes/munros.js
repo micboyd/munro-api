@@ -51,3 +51,13 @@ router.put('/mark-incomplete/:userId', async (req, res) => {
     return res.json(incompleteMunro);
 });
 
+// Return the total amount of munros completed
+router.get('/count/:userId', async (req, res) => {
+    const totalCompleted = await User.findOne({_id: req.params.userId});
+
+    const total = {
+        count: totalCompleted.munros.length
+    }
+
+    return res.json(total);
+});
