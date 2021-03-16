@@ -2,6 +2,7 @@ const router = require('express').Router();
 const Munro = require('../model/Munro');
 const User = require('../model/User');
 
+
 // Returns all completed munros - Param: User ID
 router.get('/complete/:userId', async (req, res) => {
     let user = await User.findOne({_id: req.params.userId}, {munros: 1});
@@ -11,6 +12,8 @@ router.get('/complete/:userId', async (req, res) => {
 
     return res.json(complete);
 });
+
+
 
 module.exports = router;
 
@@ -26,12 +29,14 @@ router.get('/incomplete/:userId', async (req, res) => {
 
 // Mark a munro as complete - Param: User ID
 router.put('/mark-complete/:userId', async (req, res) => {
-    console.log(req.body);
     const newMunro = await User.updateOne(
         {_id: req.params.userId}, 
         {$addToSet: {munros: req.body.munros[0]}}
     );
-    return res.json(newMunro);
+
+    const addedMunro = await Munro.findOne({_id: req.body.munros[0]});
+
+    return res.json(addedMunro);
 });
 
 // Mark a munro as incomplete - Param: User ID
@@ -40,5 +45,9 @@ router.put('/mark-incomplete/:userId', async (req, res) => {
         {_id: req.params.userId},
         {$pull: {munros: req.body.munros[0]}}
     );
-    return res.json(removeMunro);
+
+    const incompleteMunro = await Munro.findOne({_id: req.body.munros[0]});
+
+    return res.json(incompleteMunro);
 });
+
