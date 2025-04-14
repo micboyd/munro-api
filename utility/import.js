@@ -13,12 +13,10 @@ mongoose
 	.then(async () => {
 		console.log('Connected to MongoDB');
 
-		// Read and parse JSON file
 		const filePath = path.join(__dirname, 'filtered_munros.json');
 		const jsonData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
 		try {
-			// Insert data into the collection
 			await Munro.insertMany(jsonData);
 			console.log('Data imported successfully!');
 		} catch (err) {

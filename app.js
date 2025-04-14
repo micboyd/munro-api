@@ -1,7 +1,11 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+
+const authRoutes = require('./routes/auth');
 const munroRoutes = require('./routes/munros');
+
+
 const cors = require('cors');
 
 require('dotenv').config();
@@ -13,6 +17,7 @@ app.use(cors());
 
 app.use(bodyParser.json());
 
+app.use('/api/auth', authRoutes);
 app.use('/api/munros', munroRoutes);
 
 mongoose
