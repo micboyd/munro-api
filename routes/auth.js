@@ -10,7 +10,9 @@ router.post('/register', async(req, res) => {
     try {
         const {
             username,
-            password
+            password,
+            firstname,
+            lastname
         } = req.body;
 
         const existingUser = await User.findOne({
@@ -26,6 +28,8 @@ router.post('/register', async(req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const user = new User({
+            firstname,
+            lastname,
             username,
             password: hashedPassword
         });
@@ -79,7 +83,9 @@ router.post('/login', async(req, res) => {
             token,
             user: {
                 id: user._id,
-                username: user.username
+                username: user.username,
+                firstname: user.firstname,
+                lastname: user.lastname, 
             }
         });
 
