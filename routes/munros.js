@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Munro = require('../models/Munro');
+const User = require('../models/User');
 
 // Create a new Munro
 router.post('/', async (req, res) => {
@@ -18,6 +19,16 @@ router.get('/', async (req, res) => {
 	try {
 		const Munros = await Munro.find();
 		res.json(Munros);
+	} catch (err) {
+		res.status(500).json({ error: err.message });
+	}
+});
+
+// Get all completed Munros
+router.get('/completed', async (req, res) => {
+	try {
+		const completedMunros = await Munro.find({ isCompleted: true });
+		res.json(completedMunros);
 	} catch (err) {
 		res.status(500).json({ error: err.message });
 	}
@@ -56,4 +67,55 @@ router.delete('/:id', async (req, res) => {
 	}
 });
 
+// Add multiple Munros to a user's completed Munros list
+router.put('/:userId/completed', async (req, res) => {
+	try {
+		console.log(req.body);
+
+		if (!Array.isArray(req.body)) {
+			return res.status(400).json({ error: 'munroIds must be an array' });
+		}
+
+		const user = await User.findById(req.params.userId);
+		if (!user) return res.status(404).json({ error: 'User not found' });
+
+		// Convert all ObjectIds to strings and deduplicate
+		const uniqueMunroIds = [...new Set(req.body.map(id => id.toString()))];
+
+		// Add only Munros that aren't already in the completed list
+		uniqueMunroIds.forEach(munroId => {
+			if (!user.completedMunros.includes(munroId)) {
+				user.completedMunros.push(munroId);
+			}
+		});
+
+		const foundMunros = await Munro.find({ _id: { $in: uniqueMunroIds } });
+
+		if (foundMunros.length !== uniqueMunroIds.length) {
+			return res.status(400).json({ error: 'Some Munro IDs are invalid' });
+		}
+
+		await user.save();
+
+		res.json({ message: 'Munros added to completed list', completedMunros: user.completedMunros });
+	} catch (err) {
+		res.status(500).json({ error: err.message });
+	}
+});
+
+// Get all completed Munros for a specific user
+router.get('/:userId/completed', async (req, res) => {
+	try {
+		// Find the user
+		const user = await User.findById(req.params.userId).populate('completedMunros');
+		if (!user) return res.status(404).json({ error: 'User not found' });
+
+		// Return the completed Munros
+		res.json(user.completedMunros);
+	} catch (err) {
+		res.status(500).json({ error: err.message });
+	}
+});
+
 module.exports = router;
+
