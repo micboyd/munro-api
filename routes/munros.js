@@ -67,7 +67,7 @@ router.delete('/:id', async (req, res) => {
 	}
 });
 
-// Add multiple Munros to a user's completed Munros list
+// Add multiple Munros to a user's completed Munros list (replaces the list)
 router.put('/:userId/completed', async (req, res) => {
 	try {
 		console.log(req.body);
@@ -82,22 +82,18 @@ router.put('/:userId/completed', async (req, res) => {
 		// Convert all ObjectIds to strings and deduplicate
 		const uniqueMunroIds = [...new Set(req.body.map(id => id.toString()))];
 
-		// Add only Munros that aren't already in the completed list
-		uniqueMunroIds.forEach(munroId => {
-			if (!user.completedMunros.includes(munroId)) {
-				user.completedMunros.push(munroId);
-			}
-		});
-
+		// Validate Munro IDs exist in DB
 		const foundMunros = await Munro.find({ _id: { $in: uniqueMunroIds } });
-
 		if (foundMunros.length !== uniqueMunroIds.length) {
 			return res.status(400).json({ error: 'Some Munro IDs are invalid' });
 		}
 
+		// Replace completedMunros with new list
+		user.completedMunros = uniqueMunroIds;
+
 		await user.save();
 
-		res.json({ message: 'Munros added to completed list', completedMunros: user.completedMunros });
+		res.json({ message: 'Completed Munros list updated', completedMunros: user.completedMunros });
 	} catch (err) {
 		res.status(500).json({ error: err.message });
 	}
