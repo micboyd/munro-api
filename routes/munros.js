@@ -19,7 +19,6 @@ const upload = multer({
 // Create a new Munro
 router.post('/', async (req, res) => {
 	try {
-		const Munro = new Munro(req.body);
 		const savedMunro = await Munro.save();
 		res.status(201).json(savedMunro);
 	} catch (err) {
@@ -126,63 +125,55 @@ router.get('/:userId/completed', async (req, res) => {
 	}
 });
 
-router.use('/:id/image', (req, res, next) => {
-	console.log('🔍 Route hit!');
-	next();
-});
+const multerMiddleware = upload.single('image');
 
 router.post(
 	'/:id/image',
 	(req, res, next) => {
 		console.log('🔍 Route hit!');
-		console.log('➡️ Params:', req.params);
+		console.log('➡️ Params:', JSON.stringify(req.params));
 		next();
 	},
-	upload.single('image'),
 	(req, res, next) => {
-		console.log('🚦 Middleware hit');
+		multerMiddleware(req, res, function (err) {
+			if (err instanceof multer.MulterError) {
+				console.error('❌ Multer error:', err.message);
+				return res.status(400).json({ message: err.message });
+			} else if (err) {
+				console.error('❌ Unexpected error:', err.message);
+				return res.status(500).json({ message: err.message });
+			}
+			next();
+		});
+	},
+	(req, res, next) => {
+		console.log('✅ Middleware hit after Multer');
 		if (!req.file) {
 			console.error('❌ No file uploaded!');
 			return res.status(400).json({ message: 'No file uploaded' });
 		}
-		console.log('✅ Uploaded file:', JSON.stringify(req.file, null, 2));
+		console.log('✅ Uploaded file:', req.file);
 		next();
 	},
 	async (req, res) => {
 		console.log('📸 Route logic');
-		console.log('📦 req.file:', req.file); 
-
 		try {
 			const munro = await Munro.findById(req.params.id);
-			if (!munro) {
-				console.error('❌ Munro not found');
-				return res.status(404).json({ message: 'Munro not found' });
-			}
-
-			if (!req.file || !req.file.path) {
-				console.error('❌ req.file or path is missing');
-				return res.status(500).json({ message: 'File upload failed' });
-			}
+			if (!munro) return res.status(404).json({ message: 'Munro not found' });
 
 			munro.image_url = req.file.path;
 			await munro.save();
 
-			res.json({
-				message: 'Image uploaded to Cloudinary!',
-				image_url: munro.image_url,
-				munro,
-			});
+			res.json({ message: '✅ Image uploaded to Cloudinary!', munro });
 		} catch (err) {
 			console.error('❌ Upload Error:', err);
-
-			// Make sure you stringify the error for the client
 			res.status(500).json({
 				message: err.message || 'Server error',
-				error: typeof err === 'object' ? JSON.stringify(err, null, 2) : String(err),
-				stack: err.stack,
+				error: JSON.stringify(err, null, 2),
 			});
 		}
 	},
 );
 
 module.exports = router;
+
