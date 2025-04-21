@@ -2,6 +2,19 @@ const express = require('express');
 const router = express.Router();
 const Munro = require('../models/Munro');
 const User = require('../models/User');
+const multer = require('multer');
+const { storage } = require('../cloudinary'); // adjust the path as needed
+
+const upload = multer({
+	storage,
+	limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+	fileFilter: (req, file, cb) => {
+		if (!file.mimetype.startsWith('image/')) {
+			return cb(new Error('Only image files are allowed!'), false);
+		}
+		cb(null, true);
+	},
+});
 
 // Create a new Munro
 router.post('/', async (req, res) => {
@@ -113,5 +126,63 @@ router.get('/:userId/completed', async (req, res) => {
 	}
 });
 
-module.exports = router;
+router.use('/:id/image', (req, res, next) => {
+	console.log('🔍 Route hit!');
+	next();
+});
 
+router.post(
+	'/:id/image',
+	(req, res, next) => {
+		console.log('🔍 Route hit!');
+		console.log('➡️ Params:', req.params);
+		next();
+	},
+	upload.single('image'),
+	(req, res, next) => {
+		console.log('🚦 Middleware hit');
+		if (!req.file) {
+			console.error('❌ No file uploaded!');
+			return res.status(400).json({ message: 'No file uploaded' });
+		}
+		console.log('✅ Uploaded file:', JSON.stringify(req.file, null, 2));
+		next();
+	},
+	async (req, res) => {
+		console.log('📸 Route logic');
+		console.log('📦 req.file:', req.file); 
+
+		try {
+			const munro = await Munro.findById(req.params.id);
+			if (!munro) {
+				console.error('❌ Munro not found');
+				return res.status(404).json({ message: 'Munro not found' });
+			}
+
+			if (!req.file || !req.file.path) {
+				console.error('❌ req.file or path is missing');
+				return res.status(500).json({ message: 'File upload failed' });
+			}
+
+			munro.image_url = req.file.path;
+			await munro.save();
+
+			res.json({
+				message: 'Image uploaded to Cloudinary!',
+				image_url: munro.image_url,
+				munro,
+			});
+		} catch (err) {
+			console.error('❌ Upload Error:', err);
+
+			// Make sure you stringify the error for the client
+			res.status(500).json({
+				message: err.message || 'Server error',
+				error: typeof err === 'object' ? JSON.stringify(err, null, 2) : String(err),
+				stack: err.stack,
+			});
+		}
+	},
+);
+
+module.exports = router;
