@@ -11,6 +11,7 @@ const MunroSchema = new mongoose.Schema({
 	longitude: { type: Number },
 	os_ref: { type: Number },
 	region_name: { type: String },
+	image_url: { type: String },
 });
 
 module.exports = mongoose.model('Munro', MunroSchema);
