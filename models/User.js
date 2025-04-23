@@ -22,10 +22,35 @@ const userSchema = new mongoose.Schema({
 		type: String,
 		default: '',
 	},
+	bio: {
+		type: String,
+		default: '',
+	},
 	completedMunros: [
 		{
-			type: String,
-		},
+			munroId: {
+				type: String,
+				ref: 'Munro',
+			},
+			dateCompleted: {
+				type: Date,
+				default: Date.now,
+			},
+			notes: {
+				type: String,
+				default: '',
+			},
+			rating: {
+				type: Number,
+				default: 0,
+			},
+			summitImage: [
+				{
+					type: String,
+					default: '',
+				},
+			],
+		}
 	],
 });
 

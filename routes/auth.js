@@ -63,6 +63,8 @@ router.post('/login', async (req, res) => {
 			});
 		}
 
+		const id = user._id;
+
 		const token = jwt.sign(
 			{
 				id: user._id,
@@ -73,16 +75,7 @@ router.post('/login', async (req, res) => {
 			},
 		);
 
-		res.json({
-			token,
-			user: {
-				id: user._id,
-				username: user.username,
-				firstname: user.firstname,
-				lastname: user.lastname,
-				completedMunros: user.completedMunros,
-			},
-		});
+		res.json({token, id});
 	} catch (err) {
 		res.status(500).json({
 			error: err.message,
