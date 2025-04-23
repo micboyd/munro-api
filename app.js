@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 
 const authRoutes = require('./routes/auth');
 const munroRoutes = require('./routes/munros');
+const userRoutes = require('./routes/user');
 
 const cors = require('cors');
 
@@ -18,7 +19,7 @@ app.use(bodyParser.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/munros', munroRoutes);
-app.use('/uploads', express.static('uploads'));
+app.use('/api/user', userRoutes);
 
 mongoose
 	.connect(process.env.MONGO_URI, {
