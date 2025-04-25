@@ -82,13 +82,7 @@ router.delete('/:id', async (req, res) => {
 router.put('/:userId/completed', async (req, res) => {
 	try {
 		const { userId } = req.params;
-		const {
-			munroId,
-			dateCompleted,
-			notes,
-			rating,
-			summitImage
-		} = req.body;
+		const { munroId, dateCompleted, notes, rating, summitImage } = req.body;
 
 		const user = await User.findById(userId);
 		if (!user) {
@@ -131,6 +125,24 @@ router.delete('/:userId/completed/:munroId', async (req, res) => {
 		await user.save();
 
 		res.json({ message: 'Completed Munro removed', completedMunros: user.completedMunros });
+	} catch (err) {
+		res.status(500).json({ error: err.message });
+	}
+});
+
+router.get('/:userId/completed/:munroId', async (req, res) => {
+	try {
+		const { userId, munroId } = req.params;
+
+		// Find the user and populate completedMunros
+		const user = await User.findById(userId).populate('completedMunros');
+		if (!user) return res.status(404).json({ error: 'User not found' });
+
+		// Find the specific completed Munro
+		const munro = user.completedMunros.find(m => m.munroId.toString() === munroId);
+		if (!munro) return res.status(404).json({ error: 'Completed Munro not found' });
+
+		res.json(munro);
 	} catch (err) {
 		res.status(500).json({ error: err.message });
 	}
