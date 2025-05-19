@@ -49,9 +49,9 @@ router.get('/completed', async (req, res) => {
 // Read one Munro
 router.get('/:id', async (req, res) => {
 	try {
-		const Munro = await Munro.findById(req.params.id);
-		if (!Munro) return res.status(404).json({ error: 'Munro not found' });
-		res.json(Munro);
+		const munro = await Munro.findById(req.params.id);
+		if (!munro) return res.status(404).json({ error: 'Munro not found' });
+		res.json(munro);
 	} catch (err) {
 		res.status(500).json({ error: err.message });
 	}
@@ -79,7 +79,8 @@ router.delete('/:id', async (req, res) => {
 	}
 });
 
-router.put('/:userId/completed', async (req, res) => {
+// User completed munro
+router.post('/users/:userId/completed', async (req, res) => {
 	try {
 		const { userId } = req.params;
 		const { munroId, dateCompleted, notes, rating, summitImage } = req.body;
@@ -89,8 +90,7 @@ router.put('/:userId/completed', async (req, res) => {
 			return res.status(404).json({ error: 'User not found' });
 		}
 
-		// Construct the new Munro object
-		const completedMunro = {
+		const newCompletedMunro = {
 			munroId,
 			dateCompleted: dateCompleted || new Date(),
 			notes: notes || '',
@@ -98,13 +98,11 @@ router.put('/:userId/completed', async (req, res) => {
 			summitImage: summitImage || [],
 		};
 
-		// Add to the user's completedMunros list
-		user.completedMunros.push(completedMunro);
-
+		user.completedMunros.push(newCompletedMunro);
 		await user.save();
 
-		res.json({
-			message: 'Completed Munros list updated',
+		res.status(201).json({
+			message: 'Completed Munro created successfully',
 			completedMunros: user.completedMunros,
 		});
 	} catch (err) {
@@ -112,34 +110,16 @@ router.put('/:userId/completed', async (req, res) => {
 	}
 });
 
-router.delete('/:userId/completed/:munroId', async (req, res) => {
+router.get('/users/:userId/completed/:completedMunroId', async (req, res) => {
 	try {
-		const { userId, munroId } = req.params;
-
-		const user = await User.findById(userId);
+		const user = await User.findById(req.params.userId).populate('completedMunros');
 		if (!user) return res.status(404).json({ error: 'User not found' });
 
-		// Filter out the munro
-		user.completedMunros = user.completedMunros.filter(m => m.munroId !== munroId);
+		// Find the specific completed Munro by ID
+		const munro = user.completedMunros.find(m => m.munroId.toString() === req.params.completedMunroId);
 
-		await user.save();
+		console.log(user.completedMunros);
 
-		res.json({ message: 'Completed Munro removed', completedMunros: user.completedMunros });
-	} catch (err) {
-		res.status(500).json({ error: err.message });
-	}
-});
-
-router.get('/:userId/completed/:munroId', async (req, res) => {
-	try {
-		const { userId, munroId } = req.params;
-
-		// Find the user and populate completedMunros
-		const user = await User.findById(userId).populate('completedMunros');
-		if (!user) return res.status(404).json({ error: 'User not found' });
-
-		// Find the specific completed Munro
-		const munro = user.completedMunros.find(m => m.munroId.toString() === munroId);
 		if (!munro) return res.status(404).json({ error: 'Completed Munro not found' });
 
 		res.json(munro);
@@ -148,7 +128,59 @@ router.get('/:userId/completed/:munroId', async (req, res) => {
 	}
 });
 
-router.get('/:userId/completed', async (req, res) => {
+router.put('/users/:userId/completed/:completedMunroId', async (req, res) => {
+	try {
+		const { userId, completedMunroId } = req.params;
+
+		const user = await User.findById(userId);
+		if (!user) {
+			return res.status(404).json({ error: 'User not found' });
+		}
+
+		const munro = user.completedMunros.find(m => m.munroId.toString() === req.params.completedMunroId);
+
+		if (!munro) {
+			return res.status(404).json({ error: 'Completed Munro not found' });
+		}
+
+		Object.assign(munro, req.body);
+		await user.save();
+
+		res.json({
+			message: 'Completed Munro updated successfully',
+			munro,
+		});
+	} catch (err) {
+		res.status(500).json({ error: err.message });
+	}
+});
+
+router.delete('/users/:userId/completed/:completedMunroId', async (req, res) => {
+	try {
+		const { userId, completedMunroId } = req.params;
+
+		const user = await User.findById(userId);
+		if (!user) {
+			return res.status(404).json({ error: 'User not found' });
+		}
+
+		const completedMunro = user.completedMunros.id(completedMunroId);
+		if (!completedMunro) {
+			return res.status(404).json({ error: 'Completed Munro not found' });
+		}
+
+		completedMunro.remove();
+		await user.save();
+
+		res.json({
+			message: 'Completed Munro deleted successfully',
+		});
+	} catch (err) {
+		res.status(500).json({ error: err.message });
+	}
+});
+
+router.get('/users/:userId/completed', async (req, res) => {
 	try {
 		const user = await User.findById(req.params.userId).populate('completedMunros');
 		if (!user) return res.status(404).json({ error: 'User not found' });
