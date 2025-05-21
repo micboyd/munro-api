@@ -101,10 +101,7 @@ router.post('/users/:userId/completed', async (req, res) => {
 		user.completedMunros.push(newCompletedMunro);
 		await user.save();
 
-		res.status(201).json({
-			message: 'Completed Munro created successfully',
-			completedMunros: user.completedMunros,
-		});
+		res.status(201).json(newCompletedMunro);
 	} catch (err) {
 		res.status(500).json({ error: err.message });
 	}
@@ -117,8 +114,6 @@ router.get('/users/:userId/completed/:completedMunroId', async (req, res) => {
 
 		// Find the specific completed Munro by ID
 		const munro = user.completedMunros.find(m => m.munroId.toString() === req.params.completedMunroId);
-
-		console.log(user.completedMunros);
 
 		if (!munro) return res.json({ error: 'Completed Munro not found' });
 
@@ -169,7 +164,8 @@ router.delete('/users/:userId/completed/:completedMunroId', async (req, res) => 
 			return res.status(404).json({ error: 'Completed Munro not found' });
 		}
 
-		completedMunro.remove();
+		// Prefer this:
+		user.completedMunros.pull(completedMunroId);
 		await user.save();
 
 		res.json({
