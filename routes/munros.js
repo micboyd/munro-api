@@ -120,7 +120,7 @@ router.get('/users/:userId/completed/:completedMunroId', async (req, res) => {
 
 		console.log(user.completedMunros);
 
-		if (!munro) return res.status(404).json({ error: 'Completed Munro not found' });
+		if (!munro) return res.json({ error: 'Completed Munro not found' });
 
 		res.json(munro);
 	} catch (err) {
