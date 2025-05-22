@@ -81,32 +81,30 @@ router.delete('/:id', async (req, res) => {
 
 // User completed munro
 router.post('/users/:userId/completed', async (req, res) => {
-	try {
-		const { userId } = req.params;
-		const { munroId, dateCompleted, notes, rating, summitImage } = req.body;
+  try {
+    const { userId } = req.params;
+    const { munroId, dateCompleted, notes, rating, summitImage } = req.body;
 
-		const user = await User.findById(userId);
-		if (!user) {
-			return res.status(404).json({ error: 'User not found' });
-		}
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
-		const newCompletedMunro = {
-			munroId,
-			dateCompleted: dateCompleted || new Date(),
-			notes: notes || '',
-			rating: rating || 0,
-			summitImage: summitImage || [],
-		};
+    const newCompletedMunro = user.completedMunros.create({
+      munroId,
+      dateCompleted: dateCompleted || new Date(),
+      notes: notes || '',
+      rating: rating || 0,
+      summitImage: summitImage || [],
+    });
 
-		user.completedMunros.push(newCompletedMunro);
-		await user.save();
-
-		res.status(201).json(newCompletedMunro);
-	} catch (err) {
-		res.status(500).json({ error: err.message });
-	}
+    user.completedMunros.push(newCompletedMunro);
+    await user.save();
+    res.status(201).json(newCompletedMunro);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
-
 router.get('/users/:userId/completed/:completedMunroId', async (req, res) => {
 	try {
 		const user = await User.findById(req.params.userId).populate('completedMunros');
@@ -117,7 +115,7 @@ router.get('/users/:userId/completed/:completedMunroId', async (req, res) => {
 
 		if (!munro) return res.json({ error: 'Completed Munro not found' });
 
-		res.json(munro);
+		res.status(201).json(munro);
 	} catch (err) {
 		res.status(500).json({ error: err.message });
 	}
@@ -226,7 +224,7 @@ router.post(
 			munro.image_url = req.file.path;
 			await munro.save();
 
-			res.json({ message: '✅ Image uploaded to Cloudinary!', munro });
+			res.status(201).json({ message: '✅ Image uploaded to Cloudinary!', munro });
 		} catch (err) {
 			console.error('❌ Upload Error:', err);
 			res.status(500).json({
