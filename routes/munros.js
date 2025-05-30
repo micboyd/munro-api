@@ -7,7 +7,7 @@ const { storage } = require('../cloudinary'); // adjust the path as needed
 
 const upload = multer({
 	storage,
-	limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+	limits: { fileSize: 5 * 1024 * 1024 },
 	fileFilter: (req, file, cb) => {
 		if (!file.mimetype.startsWith('image/')) {
 			return cb(new Error('Only image files are allowed!'), false);
@@ -79,39 +79,16 @@ router.delete('/:id', async (req, res) => {
 	}
 });
 
-// User completed munro
-router.post('/users/:userId/completed', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { munroId, dateCompleted, notes, rating, summitImage } = req.body;
+// USER COMPLETED MUNROS
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const newCompletedMunro = user.completedMunros.create({
-      munroId,
-      dateCompleted: dateCompleted || new Date(),
-      notes: notes || '',
-      rating: rating || 0,
-      summitImage: summitImage || [],
-    });
-
-    user.completedMunros.push(newCompletedMunro);
-    await user.save();
-    res.status(201).json(newCompletedMunro);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// Get single user completed munro
 router.get('/users/:userId/completed/:completedMunroId', async (req, res) => {
 	try {
 		const user = await User.findById(req.params.userId).populate('completedMunros');
 		if (!user) return res.status(404).json({ error: 'User not found' });
 
 		// Find the specific completed Munro by ID
-		const munro = user.completedMunros.find(m => m.munroId.toString() === req.params.completedMunroId);
+		const munro = user.completedMunros.find(m => m.munroId === req.params.completedMunroId);
 
 		if (!munro) return res.json({ error: 'Completed Munro not found' });
 
@@ -121,22 +98,113 @@ router.get('/users/:userId/completed/:completedMunroId', async (req, res) => {
 	}
 });
 
-router.put('/users/:userId/completed/:completedMunroId', async (req, res) => {
+
+//		const munro = user.completedMunros.find(m => m.munroId === completedMunroId);
+
+// Post single user completed munro with multiple photos
+router.post('/users/:userId/completed', upload.array('summitImages'), async (req, res) => {
+
+	console.log('req.files:', req.files);
+
 	try {
-		const { userId, completedMunroId } = req.params;
+		const { userId } = req.params;
+		const { munroId, dateCompleted, notes, rating } = req.body;
 
 		const user = await User.findById(userId);
 		if (!user) {
 			return res.status(404).json({ error: 'User not found' });
 		}
 
-		const munro = user.completedMunros.find(m => m.munroId.toString() === req.params.completedMunroId);
+		// Extract image URLs from uploaded files
+		let summitImages = req.files ? req.files.map(file => file.path) : [];
+
+		// Optionally merge with summitImages from body, if present and valid
+		if (req.body.summitImages) {
+			let images = req.body.summitImages;
+			if (typeof images === 'string') {
+				try {
+					images = JSON.parse(images);
+				} catch {
+					images = [images];
+				}
+			}
+			if (Array.isArray(images)) {
+				// Only strings
+				summitImages = [...summitImages, ...images.filter(x => typeof x === 'string')];
+			}
+		}
+
+		const newCompletedMunro = user.completedMunros.create({
+			munroId,
+			dateCompleted: dateCompleted || new Date(),
+			notes: notes || '',
+			rating: rating || 0,
+			summitImages,
+		});
+
+		user.completedMunros.push(newCompletedMunro);
+		await user.save();
+		res.status(201).json(newCompletedMunro);
+	} catch (err) {
+		res.status(500).json({ error: err.message });
+	}
+});
+
+// Update single user completed munro with multi image support
+router.put('/users/:userId/completed/:completedMunroId', upload.array('summitImages'), async (req, res) => {
+	try {
+		const { userId, completedMunroId } = req.params;
+
+		console.log('Updating completed munro for user:', userId, 'Munro ID:', completedMunroId);
+
+		const user = await User.findById(userId);
+		if (!user) {
+			return res.status(404).json({ error: 'User not found' });
+		}
+
+		const munro = user.completedMunros.find(m => m.munroId === completedMunroId);// Find by _id (subdocument id)
+		// If you must support lookup by munroId:
+		// const munro = user.completedMunros.id(completedMunroId) || user.completedMunros.find(m => m.munroId === completedMunroId);
 
 		if (!munro) {
 			return res.status(404).json({ error: 'Completed Munro not found' });
 		}
 
-		Object.assign(munro, req.body);
+		// Safe parse of incoming summitImages from body
+		let images = [];
+		if (req.body.summitImages) {
+			let val = req.body.summitImages;
+			if (typeof val === 'string') {
+				try {
+					val = JSON.parse(val);
+				} catch {
+					val = [val];
+				}
+			}
+			if (Array.isArray(val)) {
+				images = val.filter(x => typeof x === 'string');
+			}
+		}
+
+		// Update with uploaded photos if present
+		if (req.files && req.files.length > 0) {
+			munro.summitImages = [...(munro.summitImages || []), ...req.files.map(file => file.path)];
+		}
+
+		// Merge any images provided via body (e.g. to allow image deletion)
+		if (images.length > 0) {
+			// Option 1: merge with existing
+			munro.summitImages = [...(munro.summitImages || []), ...images];
+			// Option 2: replace
+			// munro.summitImages = images;
+		}
+
+		// Update other fields except summitImages (to avoid accidental object assignment)
+		const allowedFields = ['munroId', 'dateCompleted', 'notes', 'rating'];
+		allowedFields.forEach(field => {
+			if (req.body[field] !== undefined) munro[field] = req.body[field];
+		});
+
 		await user.save();
 
 		res.json({
@@ -148,6 +216,7 @@ router.put('/users/:userId/completed/:completedMunroId', async (req, res) => {
 	}
 });
 
+// Delete single user completed munro
 router.delete('/users/:userId/completed/:completedMunroId', async (req, res) => {
 	try {
 		const { userId, completedMunroId } = req.params;
@@ -174,6 +243,7 @@ router.delete('/users/:userId/completed/:completedMunroId', async (req, res) => 
 	}
 });
 
+// Get all user completed munros
 router.get('/users/:userId/completed', async (req, res) => {
 	try {
 		const user = await User.findById(req.params.userId).populate('completedMunros');
@@ -185,55 +255,4 @@ router.get('/users/:userId/completed', async (req, res) => {
 	}
 });
 
-const multerMiddleware = upload.single('image');
-
-router.post(
-	'/:id/image',
-	(req, res, next) => {
-		console.log('🔍 Route hit!');
-		console.log('➡️ Params:', JSON.stringify(req.params));
-		next();
-	},
-	(req, res, next) => {
-		multerMiddleware(req, res, function (err) {
-			if (err instanceof multer.MulterError) {
-				console.error('❌ Multer error:', err.message);
-				return res.status(400).json({ message: err.message });
-			} else if (err) {
-				console.error('❌ Unexpected error:', err.message);
-				return res.status(500).json({ message: err.message });
-			}
-			next();
-		});
-	},
-	(req, res, next) => {
-		console.log('✅ Middleware hit after Multer');
-		if (!req.file) {
-			console.error('❌ No file uploaded!');
-			return res.status(400).json({ message: 'No file uploaded' });
-		}
-		console.log('✅ Uploaded file:', req.file);
-		next();
-	},
-	async (req, res) => {
-		console.log('📸 Route logic');
-		try {
-			const munro = await Munro.findById(req.params.id);
-			if (!munro) return res.status(404).json({ message: 'Munro not found' });
-
-			munro.image_url = req.file.path;
-			await munro.save();
-
-			res.status(201).json({ message: '✅ Image uploaded to Cloudinary!', munro });
-		} catch (err) {
-			console.error('❌ Upload Error:', err);
-			res.status(500).json({
-				message: err.message || 'Server error',
-				error: JSON.stringify(err, null, 2),
-			});
-		}
-	},
-);
-
 module.exports = router;
-
