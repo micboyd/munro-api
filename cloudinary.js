@@ -1,7 +1,11 @@
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+require("dotenv").config();
 
-require('dotenv').config();
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+
+if (!process.env.CLOUDINARY_CLOUD_NAME) {
+  throw new Error("Missing Cloudinary environment variables");
+}
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -12,14 +16,10 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
-    folder: 'munros',
-    allowed_formats: ['jpg', 'png', 'jpeg'],
-    transformation: [{ width: 1000, height: 1000, crop: 'limit' }],
+    folder: "munros",
+    allowed_formats: ["jpg", "jpeg", "png"],
+    transformation: [{ width: 1000, height: 1000, crop: "limit" }],
   },
 });
 
-
-module.exports = {
-    cloudinary,
-    storage
-  };
+module.exports = { cloudinary, storage };
