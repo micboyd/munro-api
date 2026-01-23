@@ -1,8 +1,10 @@
-const express = require('express');
+import express from "express";
+import multer from "multer";
+import User from "../models/User.js";
+import { storage } from "../cloudinary.js";
+
 const router = express.Router();
-const User = require('../models/User');
-const multer = require('multer');
-const { storage } = require('../cloudinary');
+
 
 const upload = multer({
 	storage,
@@ -218,5 +220,5 @@ router.get('/:id/completed', async (req, res) => {
 	}
 });
 
-module.exports = router;
+export default router;
 

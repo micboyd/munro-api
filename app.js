@@ -1,37 +1,34 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import dotenv from "dotenv";
 
-const authRoutes = require('./routes/auth');
-const munroRoutes = require('./routes/munros');
-const userRoutes = require('./routes/user');
+import authRoutes from "./routes/auth.js";
+import munroRoutes from "./routes/munros.js";
+import userRoutes from "./routes/user.js";
 
-const cors = require('cors');
-
-require('dotenv').config();
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
+app.use(express.json()); // replaces bodyParser.json()
 
-app.use(bodyParser.json());
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/munros", munroRoutes);
+app.use("/api/user", userRoutes);
 
-app.use('/api/auth', authRoutes);
-app.use('/api/munros', munroRoutes);
-app.use('/api/user', userRoutes);
+try {
+	await mongoose.connect(process.env.MONGO_URI);
+	console.log("MongoDB connected");
 
-mongoose
-	.connect(process.env.MONGO_URI, {
-		useNewUrlParser: true,
-		useUnifiedTopology: true,
-	})
-	.then(() => {
-		console.log('MongoDB connected');
-		app.listen(PORT, () => {
-			console.log(`Server running on port ${PORT}`);
-		});
-	})
-	.catch(err => {
-		console.error('MongoDB connection error:', err);
+	app.listen(PORT, () => {
+		console.log(`Server running on port ${PORT}`);
 	});
+} catch (err) {
+	console.error("MongoDB connection error:", err);
+	process.exit(1);
+}
