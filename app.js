@@ -3,23 +3,32 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 
-import authRoutes from "./routes/auth.js";
-import munroRoutes from "./routes/munros.js";
-import userRoutes from "./routes/user.js";
+import authRoutes from "./routes/auth/auth.js";
+
+import userProfileRoutes from "./routes/profile/user-profile.js";
+import goalsRoutes from "./routes/profile/goals.js";
+
+import mountainsRoutes from "./routes/mountains/mountains.js";
+
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
-app.use(express.json()); // replaces bodyParser.json()
+app.use(express.json());
 
-// Routes
+// auth
 app.use("/api/auth", authRoutes);
-app.use("/api/munros", munroRoutes);
-app.use("/api/user", userRoutes);
+
+// profile
+app.use("/api/profile/user-profile", userProfileRoutes);
+app.use("/api/profile/goals", goalsRoutes);
+
+// mountains
+app.use("/api/mountains", mountainsRoutes);
+
 
 try {
 	await mongoose.connect(process.env.MONGO_URI);
