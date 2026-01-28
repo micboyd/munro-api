@@ -1,5 +1,5 @@
-import express from "express";
 import UserProfile from "../../models/profile/UserProfile.js";
+import express from "express";
 
 const router = express.Router();
 
