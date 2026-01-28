@@ -1,15 +1,12 @@
-import express from "express";
-import mongoose from "mongoose";
+import authRoutes from "./routes/auth/auth.js";
+import completedMountainsRoutes from "./routes/mountains/completed-mountains.js";
 import cors from "cors";
 import dotenv from "dotenv";
-
-import authRoutes from "./routes/auth/auth.js";
-
-import userProfileRoutes from "./routes/profile/user-profile.js";
+import express from "express";
 import goalsRoutes from "./routes/profile/goals.js";
-
+import mongoose from "mongoose";
 import mountainsRoutes from "./routes/mountains/mountains.js";
-
+import userProfileRoutes from "./routes/profile/user-profile.js";
 
 dotenv.config();
 
@@ -27,7 +24,8 @@ app.use("/api/profile/user-profile", userProfileRoutes);
 app.use("/api/profile/goals", goalsRoutes);
 
 // mountains
-app.use("/api/mountains", mountainsRoutes);
+app.use("/api/mountains/mountains", mountainsRoutes);
+app.use("/api/mountains/completed-mountains", completedMountainsRoutes);
 
 
 try {
