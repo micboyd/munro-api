@@ -4,23 +4,76 @@ import Mountain from "../../models/mountain/Mountain.js";
 const router = express.Router();
 
 /**
- * GET /mountains?category=munro
+ * GET: get all unique mountain categories
+ * GET /mountains/categories
+ */
+router.get("/categories", async (req, res) => {
+    try {
+        const categories = await Mountain.distinct("category");
+
+        const cleaned = [...new Set(categories)]
+            .filter(c => typeof c === "string" && c.trim() !== "")
+            .sort();
+
+        if (!cleaned.length) {
+            return res.status(404).json({ message: "No categories found" });
+        }
+
+        return res.json(cleaned);
+    } catch (err) {
+        return res.status(500).json({
+            message: "Could not fetch categories",
+            error: err.message,
+        });
+    }
+});
+
+/**
+ * GET /mountains?category=munro&search=ben&page=1
  */
 router.get("/", async (req, res) => {
     try {
-        const { category } = req.query;
+        const { category, search } = req.query;
+
+        // Pagination params (with defaults)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 9;
+        const skip = (page - 1) * limit;
 
         const filter = {};
-        if (category) filter.category = category;
+
+        if (category) {
+            filter.category = category;
+        }
+
+        if (search) {
+            filter.name = { $regex: search, $options: "i" };
+        }
+
+        // Get total count for pagination metadata
+        const total = await Mountain.countDocuments(filter);
 
         const mountains = await Mountain.find(filter)
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
 
         if (!mountains.length) {
             return res.status(404).json({ message: "No mountains found" });
         }
 
-        return res.json(mountains);
+        return res.json({
+            data: mountains,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+                hasNextPage: page < Math.ceil(total / limit),
+                hasPrevPage: page > 1
+            }
+        });
+
     } catch (err) {
         return res.status(500).json({
             message: "Server error",

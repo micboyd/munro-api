@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const mountainSchema = new mongoose.Schema(
   {
     name: { type: String, },
-    category: { type: String },
+    category: [{ type: String }],
     country: { type: String },
     meaning: { type: String },
     height: { type: Number },
