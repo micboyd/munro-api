@@ -7,19 +7,45 @@ const router = express.Router();
  * GET: get all unique mountain categories
  * GET /mountains/categories
  */
+/**
+ * GET: get all unique mountain categories with counts
+ * GET /mountains/categories
+ */
 router.get("/categories", async (req, res) => {
     try {
-        const categories = await Mountain.distinct("category");
+        const categories = await Mountain.aggregate([
+            { $unwind: "$category" },
 
-        const cleaned = [...new Set(categories)]
-            .filter(c => typeof c === "string" && c.trim() !== "")
-            .sort();
+            {
+                $match: {
+                    category: { $type: "string", $ne: "" }
+                }
+            },
 
-        if (!cleaned.length) {
+            {
+                $group: {
+                    _id: "$category",
+                    count: { $sum: 1 }
+                }
+            },
+
+            { $sort: { _id: 1 } },
+
+            {
+                $project: {
+                    _id: 0,
+                    name: "$_id",
+                    count: 1
+                }
+            }
+        ]);
+
+        if (!categories.length) {
             return res.status(404).json({ message: "No categories found" });
         }
 
-        return res.json(cleaned);
+        return res.json(categories);
+
     } catch (err) {
         return res.status(500).json({
             message: "Could not fetch categories",
@@ -29,16 +55,11 @@ router.get("/categories", async (req, res) => {
 });
 
 /**
- * GET /mountains?category=munro&search=ben&page=1
+ * GET /mountains?category=munro&search=ben&page=1&sort=height_desc
  */
 router.get("/", async (req, res) => {
     try {
-        const { category, search } = req.query;
-
-        // Pagination params (with defaults)
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 9;
-        const skip = (page - 1) * limit;
+        const { category, search, all, sort } = req.query;
 
         const filter = {};
 
@@ -50,11 +71,44 @@ router.get("/", async (req, res) => {
             filter.name = { $regex: search, $options: "i" };
         }
 
-        // Get total count for pagination metadata
+        /* ------------------ SORTING ------------------ */
+        let sortOption = { createdAt: -1 }; // default (newest)
+
+        if (sort === "height_desc") {
+            sortOption = { height: -1 };
+        }
+
+        if (sort === "height_asc") {
+            sortOption = { height: 1 };
+        }
+
+        if (sort === "oldest") {
+            sortOption = { createdAt: 1 };
+        }
+        /* --------------------------------------------- */
+
+        if (all === "true") {
+            const mountains = await Mountain.find(filter)
+                .sort(sortOption);
+
+            if (!mountains.length) {
+                return res.status(404).json({ message: "No mountains found" });
+            }
+
+            return res.json({
+                data: mountains,
+                total: mountains.length
+            });
+        }
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 9;
+        const skip = (page - 1) * limit;
+
         const total = await Mountain.countDocuments(filter);
 
         const mountains = await Mountain.find(filter)
-            .sort({ createdAt: -1 })
+            .sort(sortOption)
             .skip(skip)
             .limit(limit);
 
