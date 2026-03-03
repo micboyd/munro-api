@@ -9,12 +9,13 @@ import goalsRoutes from "./routes/profile/goals.js";
 import mongoose from "mongoose";
 import mountainsRoutes from "./routes/mountains/mountains.js";
 import userProfileRoutes from "./routes/profile/user-profile.js";
+import plannedMountainsRoutes from "./routes/mountains/planned-mountains.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-	origin: ["http://localhost:4200"],
+	origin: ["http://localhost:64568"],
 	methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 	allowedHeaders: ["Content-Type", "Authorization"],
 	credentials: false
@@ -27,6 +28,7 @@ app.use("/api/profile/user-profile", userProfileRoutes);
 app.use("/api/profile/goals", goalsRoutes);
 app.use("/api/mountains/mountains", mountainsRoutes);
 app.use("/api/mountains/completed-mountains", completedMountainsRoutes);
+app.use("/api/mountains/planned-mountains", plannedMountainsRoutes);
 
 try {
 	await mongoose.connect(process.env.MONGO_URI);
