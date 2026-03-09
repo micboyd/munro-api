@@ -1,12 +1,9 @@
 import express from "express";
 import Mountain from "../../models/mountain/Mountain.js";
+import PlannedMountain from "../../models/mountain/PlannedMountain.js";
 
 const router = express.Router();
 
-/**
- * GET: get all unique mountain categories
- * GET /mountains/categories
- */
 /**
  * GET: get all unique mountain categories with counts
  * GET /mountains/categories
@@ -15,29 +12,25 @@ router.get("/categories", async (req, res) => {
     try {
         const categories = await Mountain.aggregate([
             { $unwind: "$category" },
-
             {
                 $match: {
-                    category: { $type: "string", $ne: "" }
-                }
+                    category: { $type: "string", $ne: "" },
+                },
             },
-
             {
                 $group: {
                     _id: "$category",
-                    count: { $sum: 1 }
-                }
+                    count: { $sum: 1 },
+                },
             },
-
             { $sort: { _id: 1 } },
-
             {
                 $project: {
                     _id: 0,
                     name: "$_id",
-                    count: 1
-                }
-            }
+                    count: 1,
+                },
+            },
         ]);
 
         if (!categories.length) {
@@ -45,7 +38,6 @@ router.get("/categories", async (req, res) => {
         }
 
         return res.json(categories);
-
     } catch (err) {
         return res.status(500).json({
             message: "Could not fetch categories",
@@ -55,11 +47,11 @@ router.get("/categories", async (req, res) => {
 });
 
 /**
- * GET /mountains?category=munro&search=ben&page=1&sort=height_desc
+ * GET /mountains?category=munro&search=ben&page=1&sort=height_desc&userId=abc123
  */
 router.get("/", async (req, res) => {
     try {
-        const { category, search, all, sort } = req.query;
+        const { category, search, all, sort, userId } = req.query;
 
         const filter = {};
 
@@ -71,8 +63,7 @@ router.get("/", async (req, res) => {
             filter.name = { $regex: search, $options: "i" };
         }
 
-        /* ------------------ SORTING ------------------ */
-        let sortOption = { createdAt: -1 }; // default (newest)
+        let sortOption = { createdAt: -1 };
 
         if (sort === "height_desc") {
             sortOption = { height: -1 };
@@ -85,19 +76,34 @@ router.get("/", async (req, res) => {
         if (sort === "oldest") {
             sortOption = { createdAt: 1 };
         }
-        /* --------------------------------------------- */
+
+        let plannedIds = new Set();
+
+        if (userId) {
+            const plannedMountains = await PlannedMountain.find({ userId })
+                .select("mountainId")
+                .lean();
+
+            plannedIds = new Set(
+                plannedMountains.map((item) => item.mountainId.toString())
+            );
+        }
 
         if (all === "true") {
-            const mountains = await Mountain.find(filter)
-                .sort(sortOption);
+            const mountains = await Mountain.find(filter).sort(sortOption).lean();
 
             if (!mountains.length) {
                 return res.status(404).json({ message: "No mountains found" });
             }
 
+            const mountainsWithStatus = mountains.map((mountain) => ({
+                ...mountain,
+                status: plannedIds.has(mountain._id.toString()) ? "planned" : null,
+            }));
+
             return res.json({
-                data: mountains,
-                total: mountains.length
+                data: mountainsWithStatus,
+                total: mountainsWithStatus.length,
             });
         }
 
@@ -110,24 +116,29 @@ router.get("/", async (req, res) => {
         const mountains = await Mountain.find(filter)
             .sort(sortOption)
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
         if (!mountains.length) {
             return res.status(404).json({ message: "No mountains found" });
         }
 
+        const mountainsWithStatus = mountains.map((mountain) => ({
+            ...mountain,
+            status: plannedIds.has(mountain._id.toString()) ? "planned" : null,
+        }));
+
         return res.json({
-            data: mountains,
+            data: mountainsWithStatus,
             pagination: {
                 total,
                 page,
                 limit,
                 totalPages: Math.ceil(total / limit),
                 hasNextPage: page < Math.ceil(total / limit),
-                hasPrevPage: page > 1
-            }
+                hasPrevPage: page > 1,
+            },
         });
-
     } catch (err) {
         return res.status(500).json({
             message: "Server error",

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const mountainSchema = new mongoose.Schema(
   {
-    name: { type: String, },
+    name: { type: String },
     category: [{ type: String }],
     country: { type: String },
     meaning: { type: String },
@@ -11,6 +11,12 @@ const mountainSchema = new mongoose.Schema(
     longitude: { type: Number },
     region: { type: String },
     imageUrl: { type: String },
+
+    status: {
+      type: String,
+      enum: ["planned", "completed"],
+      default: null,
+    },
   },
   { timestamps: true }
 );
