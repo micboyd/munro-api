@@ -14,55 +14,97 @@ const toResponse = (doc) => ({
 });
 
 /**
- * GET /planned-mountains?userId=...&page=1&limit=10&sort=date_asc&all=true
+ * GET /planned-mountains?userId=...&page=1&limit=9&sort=date_asc&all=true&category=munro&search=ben
+ * Supports the same filters/pagination as GET /mountains:
+ *   - category  : filter by mountain category
+ *   - search    : case-insensitive regex on mountain name
+ *   - sort      : date_asc | date_desc | newest | oldest | height_desc | height_asc
+ *   - page/limit: pagination (default limit 9)
+ *   - all=true  : skip pagination, return everything
  * Returns populated `mountain` (full Mountain doc), no `mountainId` in response.
  */
 router.get("/", async (req, res) => {
     try {
-        const { userId, sort, all } = req.query;
+        const { userId, sort, all, category, search } = req.query;
 
         const filter = {};
         if (userId) filter.userId = userId;
 
         let sortOption = { plannedDate: -1 };
-        if (sort === "date_asc") sortOption = { plannedDate: 1 };
-        if (sort === "date_desc") sortOption = { plannedDate: -1 };
-        if (sort === "newest") sortOption = { createdAt: -1 };
-        if (sort === "oldest") sortOption = { createdAt: 1 };
+        if (sort === "date_asc")    sortOption = { plannedDate: 1 };
+        if (sort === "date_desc")   sortOption = { plannedDate: -1 };
+        if (sort === "newest")      sortOption = { createdAt: -1 };
+        if (sort === "oldest")      sortOption = { createdAt: 1 };
+        if (sort === "height_desc") sortOption = { "mountain.height": -1 };
+        if (sort === "height_asc")  sortOption = { "mountain.height": 1 };
+
+        // Build a base aggregation pipeline so we can filter/sort on Mountain fields
+        const basePipeline = [
+            { $match: filter },
+            {
+                $lookup: {
+                    from: "mountains",
+                    localField: "mountainId",
+                    foreignField: "_id",
+                    as: "mountain",
+                },
+            },
+            { $unwind: "$mountain" },
+        ];
+
+        if (category) {
+            basePipeline.push({ $match: { "mountain.category": category } });
+        }
+
+        if (search) {
+            basePipeline.push({
+                $match: { "mountain.name": { $regex: search, $options: "i" } },
+            });
+        }
+
+        basePipeline.push({ $sort: sortOption });
+
+        const toAggResponse = (doc) => ({
+            _id: doc._id,
+            userId: doc.userId,
+            mountain: doc.mountain,
+            plannedDate: doc.plannedDate,
+            createdAt: doc.createdAt,
+            updatedAt: doc.updatedAt,
+        });
 
         if (all === "true") {
-            const planned = await PlannedMountain.find(filter)
-                .sort(sortOption)
-                .populate("mountainId");
+            const planned = await PlannedMountain.aggregate(basePipeline);
 
             if (!planned.length) {
                 return res.status(404).json({ message: "No planned mountains found" });
             }
 
-            const data = planned.map(toResponse);
-            return res.json({ data, total: data.length });
+            return res.json({ data: planned.map(toAggResponse), total: planned.length });
         }
 
-        const page = parseInt(req.query.page, 10) || 1;
-        const limit = parseInt(req.query.limit, 10) || 10;
-        const skip = (page - 1) * limit;
+        const page  = parseInt(req.query.page,  10) || 1;
+        const limit = parseInt(req.query.limit, 10) || 9;
+        const skip  = (page - 1) * limit;
 
-        const total = await PlannedMountain.countDocuments(filter);
+        const [countResult] = await PlannedMountain.aggregate([
+            ...basePipeline,
+            { $count: "total" },
+        ]);
+        const total = countResult?.total ?? 0;
 
-        const planned = await PlannedMountain.find(filter)
-            .sort(sortOption)
-            .skip(skip)
-            .limit(limit)
-            .populate("mountainId");
+        const planned = await PlannedMountain.aggregate([
+            ...basePipeline,
+            { $skip: skip },
+            { $limit: limit },
+        ]);
 
         if (!planned.length) {
             return res.status(404).json({ message: "No planned mountains found" });
         }
 
-        const data = planned.map(toResponse);
-
         return res.json({
-            data,
+            data: planned.map(toAggResponse),
             pagination: {
                 total,
                 page,
