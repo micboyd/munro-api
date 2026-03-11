@@ -83,8 +83,8 @@ router.get("/", async (req, res) => {
             return res.json({ data: planned.map(toAggResponse), total: planned.length });
         }
 
-        const page  = parseInt(req.query.page,  10) || 1;
-        const limit = parseInt(req.query.limit, 10) || 9;
+        const page  = parseInt(req.query.page,  9) || 1;
+        const limit = parseInt(req.query.limit, 9) || 9;
         const skip  = (page - 1) * limit;
 
         const [countResult] = await PlannedMountain.aggregate([
