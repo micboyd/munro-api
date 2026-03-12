@@ -1,9 +1,14 @@
 import CompletedMountain from "../../models/mountain/CompletedMountain.js";
 import { upload, uploadSummitPhotosToCloudinary } from "../../middleware/uploadToCloudinary.js";
 import express from "express";
-import mongoose from "mongoose";
 
 const router = express.Router();
+
+// Shape an aggregation doc (CompletedMountain + joined mountain) into a response object
+function toAggResponse(doc) {
+    const { mountain, ...rest } = doc;
+    return { ...rest, mountain };
+}
 
 // Run multer for every request.
 // - Non-multipart (JSON) requests: multer is a no-op and req.body from express.json() is preserved.
@@ -110,48 +115,6 @@ router.get("/", async (req, res) => {
         });
     }
 });
-
-/**
- * POST: mark mountain as completed
- * POST /completed-mountains
- * Content-Type: multipart/form-data
- * Fields: userId, mountainId, rating, dateCompleted, notes, summitPhotos (URLs)
- * Files:  photos (up to 10 image files)
- */
-router.post(
-    "/",
-    parseFormData,
-    uploadSummitPhotosToCloudinary,
-    async (req, res) => {
-        try {
-            const { userId, mountainId, rating, dateCompleted, notes } = req.body;
-
-            // Combine any existing URLs from body with newly uploaded ones
-            const bodyPhotos = req.body.summitPhotos
-                ? [].concat(req.body.summitPhotos)
-                : [];
-            const uploadedUrls = req.uploadedPhotos
-                ? req.uploadedPhotos.map((p) => p.url)
-                : [];
-
-            const created = await CompletedMountain.create({
-                userId,
-                mountainId,
-                rating,
-                dateCompleted,
-                notes,
-                summitPhotos: [...bodyPhotos, ...uploadedUrls],
-            });
-
-            return res.status(201).json(created);
-        } catch (err) {
-            return res.status(400).json({
-                message: "Could not create completed mountain",
-                error: err.message,
-            });
-        }
-    }
-);
 
 /**
  * POST: mark mountain as completed
