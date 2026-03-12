@@ -24,20 +24,6 @@ function parseFormData(req, res, next) {
     });
 }
 
-// Shape an aggregation result doc for API response
-const toAggResponse = (doc) => ({
-    _id: doc._id,
-    userId: doc.userId,
-    mountainId: doc.mountainId,
-    mountain: doc.mountain,
-    notes: doc.notes,
-    dateCompleted: doc.dateCompleted,
-    rating: doc.rating,
-    summitPhotos: doc.summitPhotos,
-    createdAt: doc.createdAt,
-    updatedAt: doc.updatedAt,
-});
-
 /**
  * GET /completed-mountains?userId=...&page=1&limit=9&sort=date_desc&all=true&search=ben
  * Supports the same filters/pagination as GET /planned-mountains:
@@ -126,38 +112,46 @@ router.get("/", async (req, res) => {
 });
 
 /**
- * GET /completed-mountains/:id
- * Returns a single completed mountain with populated `mountain`.
+ * POST: mark mountain as completed
+ * POST /completed-mountains
+ * Content-Type: multipart/form-data
+ * Fields: userId, mountainId, rating, dateCompleted, notes, summitPhotos (URLs)
+ * Files:  photos (up to 10 image files)
  */
-router.get("/:id", async (req, res) => {
-    try {
-        const [doc] = await CompletedMountain.aggregate([
-            { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
-            {
-                $lookup: {
-                    from: "mountains",
-                    let: { mid: "$mountainId" },
-                    pipeline: [
-                        { $match: { $expr: { $eq: ["$_id", { $toObjectId: "$$mid" }] } } },
-                    ],
-                    as: "mountain",
-                },
-            },
-            { $unwind: "$mountain" },
-        ]);
+router.post(
+    "/",
+    parseFormData,
+    uploadSummitPhotosToCloudinary,
+    async (req, res) => {
+        try {
+            const { userId, mountainId, rating, dateCompleted, notes } = req.body;
 
-        if (!doc) {
-            return res.status(404).json({ message: "Completed mountain not found" });
+            // Combine any existing URLs from body with newly uploaded ones
+            const bodyPhotos = req.body.summitPhotos
+                ? [].concat(req.body.summitPhotos)
+                : [];
+            const uploadedUrls = req.uploadedPhotos
+                ? req.uploadedPhotos.map((p) => p.url)
+                : [];
+
+            const created = await CompletedMountain.create({
+                userId,
+                mountainId,
+                rating,
+                dateCompleted,
+                notes,
+                summitPhotos: [...bodyPhotos, ...uploadedUrls],
+            });
+
+            return res.status(201).json(created);
+        } catch (err) {
+            return res.status(400).json({
+                message: "Could not create completed mountain",
+                error: err.message,
+            });
         }
-
-        return res.json(toAggResponse(doc));
-    } catch (err) {
-        return res.status(400).json({
-            message: "Could not fetch completed mountain",
-            error: err.message,
-        });
     }
-});
+);
 
 /**
  * POST: mark mountain as completed

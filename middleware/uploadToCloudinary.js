@@ -29,7 +29,31 @@ export async function uploadProfileImageToCloudinary(req, res, next) {
 
         req.uploadedImageUrl = result.secure_url;
         req.uploadedImagePublicId = result.public_id;
-        
+
+        next();
+    } catch (err) {
+        return res.status(400).json({ message: "Cloudinary upload failed", error: err.message });
+    }
+}
+
+export async function uploadSummitPhotosToCloudinary(req, res, next) {
+    try {
+        if (!req.files || req.files.length === 0) return next();
+
+        const uploads = await Promise.all(
+            req.files.map((file) =>
+                uploadBufferToCloudinary(file.buffer, {
+                    folder: "munros/summit-photos",
+                    resource_type: "image",
+                })
+            )
+        );
+
+        req.uploadedPhotos = uploads.map((r) => ({
+            url: r.secure_url,
+            publicId: r.public_id,
+        }));
+
         next();
     } catch (err) {
         return res.status(400).json({ message: "Cloudinary upload failed", error: err.message });
