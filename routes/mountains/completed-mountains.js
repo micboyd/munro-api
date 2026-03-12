@@ -30,10 +30,11 @@ function parseFormData(req, res, next) {
 }
 
 /**
- * GET /completed-mountains?userId=...&page=1&limit=9&sort=date_desc&all=true&search=ben
+ * GET /completed-mountains?userId=...&page=1&limit=9&sort=date_desc&all=true&category=munro&search=ben
  * Supports the same filters/pagination as GET /planned-mountains:
+ *   - category   : filter by mountain category
  *   - search     : case-insensitive regex on mountain name
- *   - sort       : date_asc | date_desc | height_desc | height_asc
+ *   - sort       : date_asc | date_desc | newest | oldest | height_desc | height_asc
  *   - page/limit : pagination (default limit 9)
  *   - all=true   : skip pagination, return everything
  * Returns populated `mountain` (full Mountain doc).
@@ -41,7 +42,7 @@ function parseFormData(req, res, next) {
  */
 router.get("/", async (req, res) => {
     try {
-        const { userId, sort, all, search } = req.query;
+        const { userId, sort, all, category, search } = req.query;
 
         const filter = {};
         if (userId) filter.userId = userId;
@@ -49,6 +50,8 @@ router.get("/", async (req, res) => {
         let sortOption = { dateCompleted: -1 };
         if (sort === "date_asc")    sortOption = { dateCompleted: 1 };
         if (sort === "date_desc")   sortOption = { dateCompleted: -1 };
+        if (sort === "newest")      sortOption = { createdAt: -1 };
+        if (sort === "oldest")      sortOption = { createdAt: 1 };
         if (sort === "height_desc") sortOption = { "mountain.height": -1 };
         if (sort === "height_asc")  sortOption = { "mountain.height": 1 };
 
@@ -67,6 +70,10 @@ router.get("/", async (req, res) => {
             },
             { $unwind: "$mountain" },
         ];
+
+        if (category) {
+            basePipeline.push({ $match: { "mountain.category": category } });
+        }
 
         if (search) {
             basePipeline.push({
