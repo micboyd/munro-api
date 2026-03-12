@@ -1,6 +1,7 @@
 import express from "express";
 import Mountain from "../../models/mountain/Mountain.js";
 import PlannedMountain from "../../models/mountain/PlannedMountain.js";
+import CompletedMountain from "../../models/mountain/CompletedMountain.js";
 
 const router = express.Router();
 
@@ -78,14 +79,19 @@ router.get("/", async (req, res) => {
         }
 
         let plannedIds = new Set();
+        let completedIds = new Set();
 
         if (userId) {
-            const plannedMountains = await PlannedMountain.find({ userId })
-                .select("mountainId")
-                .lean();
+            const [plannedMountains, completedMountains] = await Promise.all([
+                PlannedMountain.find({ userId }).select("mountainId").lean(),
+                CompletedMountain.find({ userId }).select("mountainId").lean(),
+            ]);
 
             plannedIds = new Set(
                 plannedMountains.map((item) => item.mountainId.toString())
+            );
+            completedIds = new Set(
+                completedMountains.map((item) => item.mountainId.toString())
             );
         }
 
@@ -98,7 +104,7 @@ router.get("/", async (req, res) => {
 
             const mountainsWithStatus = mountains.map((mountain) => ({
                 ...mountain,
-                status: plannedIds.has(mountain._id.toString()) ? "planned" : null,
+                status: completedIds.has(mountain._id.toString()) ? "complete" : plannedIds.has(mountain._id.toString()) ? "planned" : null,
             }));
 
             return res.json({
@@ -125,7 +131,7 @@ router.get("/", async (req, res) => {
 
         const mountainsWithStatus = mountains.map((mountain) => ({
             ...mountain,
-            status: plannedIds.has(mountain._id.toString()) ? "planned" : null,
+            status: completedIds.has(mountain._id.toString()) ? "complete" : plannedIds.has(mountain._id.toString()) ? "planned" : null,
         }));
 
         return res.json({
