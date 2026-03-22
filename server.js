@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 import mountainsRoutes from "./routes/mountains/mountains.js";
 import userProfileRoutes from "./routes/profile/user-profile.js";
 import plannedMountainsRoutes from "./routes/mountains/planned-mountains.js";
+import recentActivitiesRoutes from "./routes/mountains/recent-activities.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,7 @@ app.use("/api/profile/goals", goalsRoutes);
 app.use("/api/mountains/mountains", mountainsRoutes);
 app.use("/api/mountains/completed-mountains", completedMountainsRoutes);
 app.use("/api/mountains/planned-mountains", plannedMountainsRoutes);
+app.use("/api/mountains/recent-activities", recentActivitiesRoutes);
 
 try {
 	await mongoose.connect(process.env.MONGO_URI);
