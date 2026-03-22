@@ -16,7 +16,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-	origin: ["http://localhost:63038", "https://munrolocator.com"],
+	origin: ["http://localhost:4200", "https://munrolocator.com"],
 	methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 	allowedHeaders: ["Content-Type", "Authorization"],
 	credentials: false
@@ -30,7 +30,7 @@ app.use("/api/profile/goals", goalsRoutes);
 app.use("/api/mountains/mountains", mountainsRoutes);
 app.use("/api/mountains/completed-mountains", completedMountainsRoutes);
 app.use("/api/mountains/planned-mountains", plannedMountainsRoutes);
-app.use("/api/mountains/recent-activities", recentActivitiesRoutes);
+app.use("/api/profile/recent-activities", recentActivitiesRoutes);
 
 try {
 	await mongoose.connect(process.env.MONGO_URI);
