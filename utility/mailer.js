@@ -1,13 +1,13 @@
 import { Resend } from "resend";
 
-export async function sendConfirmationEmail({ to, username, token }) {
+export async function sendConfirmationEmail({ username, token }) {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const confirmUrl = `${process.env.APP_URL ?? "https://munrolocator.com"}/confirm?token=${token}`;
     const from = process.env.EMAIL_FROM ?? "noreply@munrolocator.com";
 
     await resend.emails.send({
         from,
-        to,
+        to: username,
         subject: "Confirm your Munro Locator account",
         html: `
             <p>Hi ${username},</p>

@@ -11,16 +11,16 @@ const CONFIRMATION_TOKEN_TTL_HOURS = 24;
 
 router.post("/register", async (req, res) => {
 	try {
-		const { username, email, password } = req.body;
+		const { username, password } = req.body;
 
-		if (!username || !email || !password) {
-			return res.status(400).json({ msg: "username, email, and password are required" });
+		if (!username || !password) {
+			return res.status(400).json({ msg: "username and password are required" });
 		}
 
-		const existingUser = await Auth.findOne({ $or: [{ username }, { email }] });
+		const existingUser = await Auth.findOne({ username });
 
 		if (existingUser) {
-			return res.status(409).json({ msg: "Username or email already in use" });
+			return res.status(409).json({ msg: "Username already in use" });
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 10);
@@ -31,13 +31,12 @@ router.post("/register", async (req, res) => {
 
 		await Auth.create({
 			username,
-			email,
 			password: hashedPassword,
 			confirmationToken,
 			confirmationTokenExpires,
 		});
 
-		await sendConfirmationEmail({ to: email, username, token: confirmationToken });
+		await sendConfirmationEmail({ username, token: confirmationToken });
 
 		res.status(201).json({ msg: "User registered. Check your email to confirm your account." });
 
@@ -84,6 +83,10 @@ router.post("/login", async (req, res) => {
 		const isMatch = await bcrypt.compare(password, user.password);
 		if (!isMatch) {
 			return res.status(401).json({ msg: "Invalid credentials" });
+		}
+
+		if (!user.isVerified) {
+			return res.status(403).json({ msg: "Please confirm your email before logging in." });
 		}
 
 		if (!process.env.JWT_SECRET) {
