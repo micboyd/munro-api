@@ -1,8 +1,28 @@
 import express from "express";
 import TripPlan from "../../models/mountain/TripPlan.js";
 import Mountain from "../../models/mountain/Mountain.js";
+import CompletedMountain from "../../models/mountain/CompletedMountain.js";
 
 const router = express.Router();
+
+/**
+ * Fetch completed mountainIds for a user and stamp status onto a populated trip's mountains.
+ */
+async function withStatus(trip, userId) {
+    const completedDocs = await CompletedMountain.find({ userId })
+        .select("mountainId")
+        .lean();
+    const completedIds = new Set(completedDocs.map((c) => c.mountainId.toString()));
+
+    const obj = trip.toObject ? trip.toObject() : trip;
+    return {
+        ...obj,
+        mountains: (obj.mountains ?? []).map((m) => ({
+            ...m,
+            status: completedIds.has(m._id.toString()) ? "completed" : null,
+        })),
+    };
+}
 
 /**
  * GET /trip-plans?userId=...
@@ -16,7 +36,8 @@ router.get("/", async (req, res) => {
             .populate("mountains")
             .sort({ createdAt: -1 });
 
-        return res.json(trips);
+        const enriched = await Promise.all(trips.map((t) => withStatus(t, userId)));
+        return res.json(enriched);
     } catch (err) {
         return res.status(500).json({ message: "Server error", error: err.message });
     }
@@ -34,7 +55,7 @@ router.get("/:id", async (req, res) => {
             return res.status(404).json({ message: "Trip plan not found" });
         }
 
-        return res.json(trip);
+        return res.json(await withStatus(trip, trip.userId));
     } catch (err) {
         return res.status(400).json({ message: "Could not fetch trip plan", error: err.message });
     }
@@ -60,7 +81,7 @@ router.post("/", async (req, res) => {
 
         const populated = await TripPlan.findById(created._id).populate("mountains");
 
-        return res.status(201).json(populated);
+        return res.status(201).json(await withStatus(populated, populated.userId));
     } catch (err) {
         return res.status(400).json({ message: "Could not create trip plan", error: err.message });
     }
@@ -87,7 +108,7 @@ router.put("/:id", async (req, res) => {
             return res.status(404).json({ message: "Trip plan not found" });
         }
 
-        return res.json(updated);
+        return res.json(await withStatus(updated, updated.userId));
     } catch (err) {
         return res.status(400).json({ message: "Could not update trip plan", error: err.message });
     }
@@ -137,7 +158,7 @@ router.post("/:id/mountains", async (req, res) => {
         await trip.save();
 
         const populated = await TripPlan.findById(trip._id).populate("mountains");
-        return res.json(populated);
+        return res.json(await withStatus(populated, populated.userId));
     } catch (err) {
         return res.status(400).json({ message: "Could not add mountain", error: err.message });
     }
@@ -160,7 +181,7 @@ router.delete("/:id/mountains/:mountainId", async (req, res) => {
         await trip.save();
 
         const populated = await TripPlan.findById(trip._id).populate("mountains");
-        return res.json(populated);
+        return res.json(await withStatus(populated, populated.userId));
     } catch (err) {
         return res.status(400).json({ message: "Could not remove mountain", error: err.message });
     }
