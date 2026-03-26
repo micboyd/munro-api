@@ -1,33 +1,68 @@
+import crypto from "crypto";
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Auth from "../../models/auth/Auth.js";
+import { sendConfirmationEmail } from "../../utility/mailer.js";
 
 const router = express.Router();
 
+const CONFIRMATION_TOKEN_TTL_HOURS = 24;
+
 router.post("/register", async (req, res) => {
 	try {
-		const { username, password } = req.body;
+		const { username, email, password } = req.body;
 
-		if (!username || !password) {
-			return res.status(400).json({ msg: "username and password are required" });
+		if (!username || !email || !password) {
+			return res.status(400).json({ msg: "username, email, and password are required" });
 		}
 
-		const existingUser = await Auth.findOne({ username });
+		const existingUser = await Auth.findOne({ $or: [{ username }, { email }] });
 
 		if (existingUser) {
-			return res.status(409).json({ msg: "User already exists" });
+			return res.status(409).json({ msg: "Username or email already in use" });
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 10);
+		const confirmationToken = crypto.randomBytes(32).toString("hex");
+		const confirmationTokenExpires = new Date(
+			Date.now() + CONFIRMATION_TOKEN_TTL_HOURS * 60 * 60 * 1000
+		);
 
 		await Auth.create({
 			username,
+			email,
 			password: hashedPassword,
+			confirmationToken,
+			confirmationTokenExpires,
 		});
 
-		res.status(201).json({ msg: "User registered" });
+		await sendConfirmationEmail({ to: email, username, token: confirmationToken });
 
+		res.status(201).json({ msg: "User registered. Check your email to confirm your account." });
+
+	} catch (err) {
+		res.status(500).json({ error: err.message });
+	}
+});
+
+router.get("/confirm/:token", async (req, res) => {
+	try {
+		const user = await Auth.findOne({
+			confirmationToken: req.params.token,
+			confirmationTokenExpires: { $gt: new Date() },
+		}).select("+confirmationToken +confirmationTokenExpires");
+
+		if (!user) {
+			return res.status(400).json({ msg: "Invalid or expired confirmation token" });
+		}
+
+		user.isVerified = true;
+		user.confirmationToken = null;
+		user.confirmationTokenExpires = null;
+		await user.save();
+
+		res.json({ msg: "Account confirmed. You can now log in." });
 	} catch (err) {
 		res.status(500).json({ error: err.message });
 	}

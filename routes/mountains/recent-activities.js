@@ -1,5 +1,6 @@
 import CompletedMountain from "../../models/mountain/CompletedMountain.js";
 import PlannedMountain from "../../models/mountain/PlannedMountain.js";
+import TripPlan from "../../models/mountain/TripPlan.js";
 import express from "express";
 
 const router = express.Router();
@@ -7,8 +8,9 @@ const router = express.Router();
 /**
  * GET /recent-activities?userId=...&limit=10
  * Returns a merged, chronologically-sorted list of recent user activity:
- *   - type "completed" : mountain marked as completed
- *   - type "planned"   : mountain added to planned list
+ *   - type "completed"    : mountain marked as completed
+ *   - type "planned"      : mountain added to planned list
+ *   - type "trip_created" : trip plan created
  *
  * Query params:
  *   userId  (required) - the user to fetch activity for
@@ -72,12 +74,24 @@ router.get("/", async (req, res) => {
             },
         ];
 
-        const [completed, planned] = await Promise.all([
+        const tripPipeline = [
+            { $match: { userId } },
+            {
+                $project: {
+                    type: { $literal: "trip_created" },
+                    createdAt: 1,
+                    title: 1,
+                },
+            },
+        ];
+
+        const [completed, planned, trips] = await Promise.all([
             CompletedMountain.aggregate(completedPipeline),
             PlannedMountain.aggregate(plannedPipeline),
+            TripPlan.aggregate(tripPipeline),
         ]);
 
-        const activities = [...completed, ...planned]
+        const activities = [...completed, ...planned, ...trips]
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
             .slice(0, limit);
 

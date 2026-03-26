@@ -1,17 +1,24 @@
 import express from "express";
 import PlannedMountain from "../../models/mountain/PlannedMountain.js";
+import TripPlan from "../../models/mountain/TripPlan.js";
 
 const router = express.Router();
 
 // Helper to shape API response (no mountainId exposed)
-const toResponse = (doc) => ({
+const toResponse = (doc, tripIds = []) => ({
     _id: doc._id,
     userId: doc.userId,
     mountain: doc.mountainId, // populated Mountain doc
     plannedDate: doc.plannedDate,
+    tripIds,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
 });
+
+async function getTripIds(userId, mountainId) {
+    const trips = await TripPlan.find({ userId, mountains: mountainId }).select("_id").lean();
+    return trips.map((t) => t._id.toString());
+}
 
 /**
  * GET /planned-mountains?userId=...&page=1&limit=9&sort=date_asc&all=true&category=munro&search=ben
@@ -63,12 +70,27 @@ router.get("/", async (req, res) => {
         }
 
         basePipeline.push({ $sort: sortOption });
+        basePipeline.push({
+            $lookup: {
+                from: "tripplans",
+                let: { mountainId: "$mountainId", userId: "$userId" },
+                pipeline: [
+                    { $match: { $expr: { $and: [
+                        { $eq: ["$userId", "$$userId"] },
+                        { $in: ["$$mountainId", "$mountains"] },
+                    ]}}},
+                    { $project: { _id: 1 } },
+                ],
+                as: "trips",
+            },
+        });
 
         const toAggResponse = (doc) => ({
             _id: doc._id,
             userId: doc.userId,
             mountain: doc.mountain,
             plannedDate: doc.plannedDate,
+            tripIds: (doc.trips ?? []).map((t) => t._id.toString()),
             createdAt: doc.createdAt,
             updatedAt: doc.updatedAt,
         });
@@ -131,7 +153,8 @@ router.get("/:id", async (req, res) => {
             return res.status(404).json({ message: "Planned mountain not found" });
         }
 
-        return res.json(toResponse(planned));
+        const tripIds = await getTripIds(planned.userId, planned.mountainId);
+        return res.json(toResponse(planned, tripIds));
     } catch (err) {
         return res.status(400).json({
             message: "Could not fetch planned mountain",
@@ -159,7 +182,8 @@ router.post("/", async (req, res) => {
             "mountainId"
         );
 
-        return res.status(201).json(toResponse(populated));
+        const tripIds = await getTripIds(populated.userId, populated.mountainId);
+        return res.status(201).json(toResponse(populated, tripIds));
     } catch (err) {
         return res.status(400).json({
             message: "Could not create planned mountain",
@@ -191,7 +215,8 @@ router.put("/:id", async (req, res) => {
             return res.status(404).json({ message: "Planned mountain not found" });
         }
 
-        return res.json(toResponse(updated));
+        const tripIds = await getTripIds(updated.userId, updated.mountainId);
+        return res.json(toResponse(updated, tripIds));
     } catch (err) {
         return res.status(400).json({
             message: "Could not update planned mountain",
