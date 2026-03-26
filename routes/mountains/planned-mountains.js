@@ -99,10 +99,6 @@ router.get("/", async (req, res) => {
             { $limit: limit },
         ]);
 
-        if (!planned.length) {
-            return res.status(404).json({ message: "No planned mountains found" });
-        }
-
         return res.json({
             data: planned.map(toAggResponse),
             pagination: {

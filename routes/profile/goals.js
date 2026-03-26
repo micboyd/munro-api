@@ -12,9 +12,6 @@ router.get("/:userId", async (req, res) => {
         const { userId } = req.params;
 
         const goals = await Goal.find({ userId }).sort({ createdAt: -1 });
-        if (!goals.length) {
-            return res.status(404).json({ message: "No goals found for this user" });
-        }
 
         return res.json(goals);
     } catch (err) {
